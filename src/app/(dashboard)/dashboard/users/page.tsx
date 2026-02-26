@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useUsers, useUpdateUser, useSoftDeleteUser } from '@/hooks/useData';
+import { z } from 'zod';
+import { useUsers, useUpdateUser, useSoftDeleteUser, useCreateUser } from '@/hooks/useData';
 import { DataTable } from '@/components/shared/DataTable';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -37,6 +38,7 @@ import {
   Search,
   Filter,
   Edit,
+  UserPlus,
 } from 'lucide-react';
 import {
   ROLE_LABELS,
@@ -48,9 +50,109 @@ import type { Profile, UserRole } from '@/types';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userFormSchema, type UserFormData } from '@/lib/validations';
+
+// Schema for creating a new user (adds required password field)
+const createUserSchema = userFormSchema.extend({
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+type CreateUserFormData = z.infer<typeof createUserSchema>;
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
+
+// ---- Create User Dialog ----
+function CreateUserDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const createUser = useCreateUser();
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateUserFormData>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: { role: 'student', is_active: true },
+  });
+
+  const onSubmit = async (data: CreateUserFormData) => {
+    await createUser.mutateAsync({
+      email: data.email,
+      password: data.password,
+      full_name: data.full_name,
+      role: data.role,
+      department: data.department || undefined,
+      phone: data.phone || undefined,
+    });
+    toast.success(`User ${data.email} created`);
+    reset();
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create New User</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 space-y-1">
+              <Label>Full Name</Label>
+              <Input {...register('full_name')} placeholder="Dr. Jane Smith" />
+              {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Email</Label>
+              <Input type="email" {...register('email')} placeholder="user@university.edu" />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Password</Label>
+              <Input type="password" {...register('password')} placeholder="Minimum 8 characters" />
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Role</Label>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="faculty">Faculty</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Department</Label>
+              <Input {...register('department')} placeholder="Optional" />
+            </div>
+            <div className="space-y-1">
+              <Label>Phone</Label>
+              <Input {...register('phone')} placeholder="Optional" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
+            <Button type="submit" loading={isSubmitting}>Create User</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ---- Edit User Dialog ----
 function EditUserDialog({
@@ -155,6 +257,7 @@ export default function UsersPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [page, setPage] = useState(1);
 
+  const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Profile | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<Profile | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Profile | null>(null);
@@ -259,6 +362,13 @@ export default function UsersPage() {
         title="User Management"
         description="Manage all registered users across the platform."
         icon={<Users className="h-6 w-6" />}
+        actions={
+          currentUser && ['super_admin', 'admin'].includes(currentUser.role) ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Create User
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* Filters */}
@@ -305,6 +415,8 @@ export default function UsersPage() {
         onPageChange={setPage}
         emptyMessage="No users found."
       />
+
+      <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
 
       {editTarget && (
         <EditUserDialog user={editTarget} open onClose={() => setEditTarget(null)} />

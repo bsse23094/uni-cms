@@ -53,7 +53,8 @@ export const assignmentFormSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().max(2000).optional(),
   instructions: z.string().max(5000).optional(),
-  due_date: z.date({ required_error: 'Due date is required' }),
+  // z.coerce.date converts the datetime-local string input to a Date object
+  due_date: z.coerce.date({ required_error: 'Due date is required' }),
   max_points: z.number().min(1).max(1000),
   allow_late: z.boolean().default(false),
   late_penalty_pct: z.number().min(0).max(100).default(0),

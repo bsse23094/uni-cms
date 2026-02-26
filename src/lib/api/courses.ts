@@ -30,7 +30,10 @@ export async function getCourses(
   let query = client
     .from('courses')
     .select(
-      `*, course_faculty!inner(faculty:profiles(id,full_name,avatar_url,email), is_primary)`,
+      // LEFT JOIN (no !inner) so courses without faculty assigned still appear.
+      // Use !faculty_id hint to disambiguate: course_faculty has two FKs to profiles
+      // (faculty_id and assigned_by), so PostgREST needs the explicit column name.
+      `*, course_faculty(faculty:profiles!faculty_id(id,full_name,avatar_url,email), is_primary)`,
       { count: 'exact' },
     )
     .is('deleted_at', null)
@@ -45,7 +48,18 @@ export async function getCourses(
     );
   }
   if (faculty_id) {
-    query = query.eq('course_faculty.faculty_id', faculty_id);
+    // Subquery approach: filter parent courses to only those where this faculty is assigned.
+    // Cannot use .eq('course_faculty.faculty_id', X) because that only filters the embedded
+    // rows (LEFT JOIN), not the parent courses rows.
+    const { data: facData } = await client
+      .from('course_faculty')
+      .select('course_id')
+      .eq('faculty_id', faculty_id);
+    const ids = (facData ?? []).map((f) => f.course_id);
+    if (ids.length === 0) {
+      return { data: [], count: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+    }
+    query = query.in('id', ids);
   }
 
   if (student_id) {
@@ -86,7 +100,7 @@ export async function getCourseById(
 ): Promise<CourseWithFaculty> {
   const { data, error } = await client
     .from('courses')
-    .select(`*, course_faculty(faculty:profiles(id,full_name,avatar_url,email,role), is_primary, assigned_at)`)
+    .select(`*, course_faculty(faculty:profiles!faculty_id(id,full_name,avatar_url,email,role), is_primary, assigned_at)`)
     .eq('id', id)
     .is('deleted_at', null)
     .single();

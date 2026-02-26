@@ -2,11 +2,10 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap, Mail, Lock } from 'lucide-react';
 import { loginSchema, type LoginSchema } from '@/lib/validations';
-import { useAuth } from '@/context/AuthContext';
+import { signInAction } from './actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,15 +14,6 @@ import toast from 'react-hot-toast';
 import { useState } from 'react';
 
 export default function LoginPage() {
-  const { signIn } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  // Sanitize 'next' to prevent open-redirect attacks
-  const rawNext = searchParams.get('next') ?? '';
-  const nextUrl =
-    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.includes(':')
-      ? rawNext
-      : '/dashboard';
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -37,13 +27,27 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginSchema) => {
     setIsLoading(true);
     try {
-      await signIn(data.email, data.password);
-      toast.success('Welcome back!');
-      router.push(nextUrl);
+      // Use a Server Action so @supabase/ssr writes the session cookies into
+      // the HTTP response — guaranteeing the middleware will see them on redirect.
+      const formData = new FormData();
+      formData.set('email', data.email);
+      formData.set('password', data.password);
+
+      const result = await signInAction(null, formData);
+
+      // signInAction throws a Next.js redirect internally on success,
+      // so if we get here it returned an error object.
+      if (result?.error) {
+        throw new Error(result.error);
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Sign in failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      // re-thrown redirect() is not an Error instance — let it propagate
+      if (error instanceof Error) {
+        setIsLoading(false);
+        toast.error(error.message);
+      } else {
+        throw error;
+      }
     }
   };
 

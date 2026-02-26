@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { UserRole } from '@/types';
 
@@ -22,15 +23,19 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
+        // @supabase/ssr v0.3.x uses singular get/set/remove
+        get(name: string) {
+          return request.cookies.get(name)?.value;
         },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }>) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        set(name: string, value: string, options: Record<string, unknown>) {
+          request.cookies.set(name, value);
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options as Parameters<typeof supabaseResponse.cookies.set>[2]),
-          );
+          supabaseResponse.cookies.set(name, value, options as Parameters<typeof supabaseResponse.cookies.set>[2]);
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          request.cookies.set(name, '');
+          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse.cookies.set(name, '', { ...options, maxAge: 0 } as Parameters<typeof supabaseResponse.cookies.set>[2]);
         },
       },
     },
@@ -59,8 +64,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Fetch role from profiles
-  const { data: profile } = await supabase
+  // Fetch role from profiles using service role to bypass RLS in middleware context.
+  // The anon key + authenticated RLS sometimes fails to resolve auth.uid() in the
+  // Edge Runtime, returning null and incorrectly triggering the deactivation redirect.
+  const adminClient = createSupabaseAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('role, is_active, deleted_at')
     .eq('id', user.id)

@@ -7,6 +7,7 @@ import * as assignmentsApi from '@/lib/api/assignments';
 import * as gradesApi from '@/lib/api/grades';
 import * as announcementsApi from '@/lib/api/announcements';
 import * as dashboardApi from '@/lib/api/dashboard';
+import { createUserAction, type CreateUserPayload } from '@/app/(dashboard)/dashboard/users/actions';
 import type { Profile } from '@/types';
 import type { CourseFormSchema, AssignmentFormSchema, GradeFormSchema } from '@/lib/validations';
 import toast from 'react-hot-toast';
@@ -20,6 +21,13 @@ export type { SubmissionFilters } from '@/lib/api/grades';
 export type { AnnouncementFilters } from '@/lib/api/announcements';
 
 const sb = () => createClient();
+
+/** Resolves the current authenticated user's ID. Throws if not authenticated. */
+async function currentUserId(): Promise<string> {
+  const { data: { user } } = await createClient().auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
+  return user.id;
+}
 
 // ============================================================
 // USERS
@@ -63,6 +71,20 @@ export function useSoftDeleteUser() {
   });
 }
 
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateUserPayload) => {
+      const result = await createUserAction(payload);
+      if (result.error) throw new Error(result.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 // ============================================================
 // COURSES
 // ============================================================
@@ -84,9 +106,10 @@ export function useCourse(id: string) {
 export function useCreateCourse() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CourseFormSchema & { created_by?: string }) => {
-      const { created_by = 'system', ...rest } = payload;
-      return coursesApi.createCourse(sb(), { ...rest, created_by });
+    mutationFn: async (payload: CourseFormSchema & { created_by?: string }) => {
+      const userId = payload.created_by ?? await currentUserId();
+      const { created_by: _ignore, ...rest } = payload;
+      return coursesApi.createCourse(sb(), { ...rest, created_by: userId });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['courses'] });
@@ -147,17 +170,20 @@ export function useEnrollStudent() {
 export function useUpdateEnrollmentStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       status,
-      actorId = 'system',
+      actorId,
       notes,
     }: {
       id: string;
       status: Parameters<typeof enrollmentsApi.updateEnrollmentStatus>[2];
       actorId?: string;
       notes?: string;
-    }) => enrollmentsApi.updateEnrollmentStatus(sb(), id, status, actorId, notes),
+    }) => {
+      const userId = actorId ?? await currentUserId();
+      return enrollmentsApi.updateEnrollmentStatus(sb(), id, status, userId, notes);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['enrollments'] });
       toast.success('Enrollment status updated');
@@ -187,9 +213,10 @@ export function useAssignment(id: string) {
 export function useCreateAssignment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: AssignmentFormSchema & { course_id: string; created_by?: string }) => {
-      const { course_id, created_by = 'system', ...rest } = payload;
-      return assignmentsApi.createAssignment(sb(), course_id, created_by, rest as AssignmentFormSchema);
+    mutationFn: async (payload: AssignmentFormSchema & { course_id: string; created_by?: string }) => {
+      const { course_id, created_by, ...rest } = payload;
+      const userId = created_by ?? await currentUserId();
+      return assignmentsApi.createAssignment(sb(), course_id, userId, rest as AssignmentFormSchema);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['assignments'] });
@@ -230,9 +257,9 @@ export function useSubmissions(filters: gradesApi.SubmissionFilters = {}) {
 export function useGradeSubmission() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       submissionId,
-      gradedBy = 'system',
+      gradedBy,
       points,
       feedback,
     }: {
@@ -240,7 +267,10 @@ export function useGradeSubmission() {
       gradedBy?: string;
       points: number;
       feedback?: string;
-    }) => gradesApi.gradeSubmission(sb(), submissionId, gradedBy, { points, feedback }),
+    }) => {
+      const userId = gradedBy ?? await currentUserId();
+      return gradesApi.gradeSubmission(sb(), submissionId, userId, { points, feedback });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['submissions'] });
       toast.success('Grade saved');
@@ -270,9 +300,10 @@ export function useAnnouncements(filters: announcementsApi.AnnouncementFilters =
 export function useCreateAnnouncement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: Parameters<typeof announcementsApi.createAnnouncement>[2] & { author_id?: string }) => {
-      const { author_id = 'system', ...rest } = payload;
-      return announcementsApi.createAnnouncement(sb(), author_id, rest);
+    mutationFn: async (payload: Parameters<typeof announcementsApi.createAnnouncement>[2] & { author_id?: string }) => {
+      const { author_id, ...rest } = payload;
+      const userId = author_id ?? await currentUserId();
+      return announcementsApi.createAnnouncement(sb(), userId, rest);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['announcements'] });

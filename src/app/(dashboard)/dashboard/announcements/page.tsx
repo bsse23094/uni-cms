@@ -160,8 +160,9 @@ export default function AnnouncementsPage() {
 
   const canCreate = profile?.role !== 'student';
 
+  // No audience filter — RLS on the server already scopes announcements to
+  // what each role is allowed to see, so we just fetch everything visible.
   const { data, isLoading } = useAnnouncements({
-    audience: profile?.role,
     page,
     pageSize: 10,
   });

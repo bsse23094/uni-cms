@@ -16,6 +16,32 @@
 -- ============================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- for full-text search
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- ============================================================
+-- 2. Enum Types  (must be created before any function that casts to them)
+-- ============================================================
+DO $$ BEGIN
+  CREATE TYPE public.user_role AS ENUM ('super_admin', 'admin', 'faculty', 'student');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.enrollment_status AS ENUM ('pending', 'approved', 'rejected', 'dropped');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.submission_status AS ENUM ('draft', 'submitted', 'graded', 'returned');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.course_status AS ENUM ('draft', 'active', 'archived');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.announcement_audience AS ENUM ('all', 'students', 'faculty', 'admin');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Helper functions
 
 -- Automatically update updated_at on any table that has it
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
@@ -49,71 +75,6 @@ BEGIN
 END;
 $$;
 
--- Helper: return the role of the currently authenticated user
-CREATE OR REPLACE FUNCTION public.current_user_role()
-RETURNS public.user_role
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT role
-  FROM public.profiles
-  WHERE id = auth.uid()
-  LIMIT 1;
-$$;
-
--- Helper: check if current user is super_admin or admin
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT role IN ('super_admin', 'admin')
-  FROM public.profiles
-  WHERE id = auth.uid()
-  LIMIT 1;
-$$;
-
--- Helper: check if current user is faculty, admin, or super_admin
-CREATE OR REPLACE FUNCTION public.is_faculty_or_admin()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT role IN ('super_admin', 'admin', 'faculty')
-  FROM public.profiles
-  WHERE id = auth.uid()
-  LIMIT 1;
-$$;
-
--- ============================================================
--- 2. Enum Types
--- ============================================================
-DO $$ BEGIN
-  CREATE TYPE public.user_role AS ENUM ('super_admin', 'admin', 'faculty', 'student');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE TYPE public.enrollment_status AS ENUM ('pending', 'approved', 'rejected', 'dropped');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE TYPE public.submission_status AS ENUM ('draft', 'submitted', 'graded', 'returned');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE TYPE public.course_status AS ENUM ('draft', 'active', 'archived');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE TYPE public.announcement_audience AS ENUM ('all', 'students', 'faculty', 'admin');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
 -- ============================================================
 -- 3. Core Tables
 -- ============================================================
@@ -145,6 +106,47 @@ CREATE TRIGGER profiles_updated_at
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Helper functions that query public.profiles (must be created AFTER the table)
+
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS public.user_role
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role
+  FROM public.profiles
+  WHERE id = auth.uid()
+  LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role IN ('super_admin', 'admin')
+  FROM public.profiles
+  WHERE id = auth.uid()
+  LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_faculty_or_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role IN ('super_admin', 'admin', 'faculty')
+  FROM public.profiles
+  WHERE id = auth.uid()
+  LIMIT 1;
+$$;
 
 -- ----------------------------------------------------------
 -- 3.2 Courses
@@ -510,13 +512,17 @@ CREATE POLICY "enrollments: student insert"
     AND public.current_user_role() = 'student'
   );
 
--- Students can drop their own enrollment; admins can change any
+-- Students can drop their own enrollment; admins and faculty of the course can change status
 CREATE POLICY "enrollments: student/admin update"
   ON public.enrollments FOR UPDATE
   TO authenticated
   USING (
     (student_id = auth.uid() AND public.current_user_role() = 'student')
     OR public.is_admin()
+    OR (
+      public.current_user_role() = 'faculty'
+      AND course_id IN (SELECT course_id FROM public.course_faculty WHERE faculty_id = auth.uid())
+    )
   );
 
 CREATE POLICY "enrollments: admin delete"
