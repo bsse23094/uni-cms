@@ -160,11 +160,11 @@ export default function AnnouncementsPage() {
 
   const canCreate = profile?.role !== 'student';
 
-  // No audience filter — RLS on the server already scopes announcements to
-  // what each role is allowed to see, so we just fetch everything visible.
+  // Pass userRole so the API scopes audience: students see 'all'+'students', faculty see 'all'+'faculty'.
   const { data, isLoading } = useAnnouncements({
     page,
     pageSize: 10,
+    userRole: profile?.role as 'student' | 'faculty' | 'admin' | 'super_admin' | undefined,
   });
 
   const pinned = data?.data.filter((a) => a.is_pinned) ?? [];

@@ -70,35 +70,38 @@ export async function getFacultyStats(
     return { coursesTaught: 0, totalStudents: 0, pendingSubmissions: 0, upcomingAssignments: 0 };
   }
 
-  const [
-    { count: totalStudents },
-    { count: pendingSubmissions },
-    { count: upcomingAssignments },
-  ] = await Promise.all([
-    client
-      .from('enrollments')
-      .select('id', { count: 'exact', head: true })
-      .in('course_id', courseIds)
-      .eq('status', 'approved')
-      .is('deleted_at', null),
-    client
-      .from('submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'submitted')
-      .in(
-        'assignment_id',
-        (
-          await client.from('assignments').select('id').in('course_id', courseIds).is('deleted_at', null)
-        ).data?.map((a) => a.id) ?? [],
-      )
-      .is('deleted_at', null),
-    client
-      .from('assignments')
-      .select('id', { count: 'exact', head: true })
-      .in('course_id', courseIds)
-      .gt('due_date', new Date().toISOString())
-      .is('deleted_at', null),
-  ]);
+  // Fetch assignment IDs IN PARALLEL with the enrollment count so that the
+  // submissions query (which needs assignment IDs) doesn't create a 3-step serial chain.
+  const [{ data: assignmentRows }, { count: totalStudents }, { count: upcomingAssignments }] =
+    await Promise.all([
+      client
+        .from('assignments')
+        .select('id')
+        .in('course_id', courseIds)
+        .is('deleted_at', null),
+      client
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .in('course_id', courseIds)
+        .eq('status', 'approved')
+        .is('deleted_at', null),
+      client
+        .from('assignments')
+        .select('id', { count: 'exact', head: true })
+        .in('course_id', courseIds)
+        .gt('due_date', new Date().toISOString())
+        .is('deleted_at', null),
+    ]);
+
+  const assignmentIds = (assignmentRows ?? []).map((a) => a.id);
+  const { count: pendingSubmissions } = assignmentIds.length
+    ? await client
+        .from('submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'submitted')
+        .in('assignment_id', assignmentIds)
+        .is('deleted_at', null)
+    : { count: 0 };
 
   return {
     coursesTaught: courseIds.length,
@@ -112,10 +115,12 @@ export async function getStudentStats(
   client: Client,
   studentId: string,
 ): Promise<StudentDashboardStats> {
+  // All 4 queries run in parallel — gradedSubs was previously a sequential second round-trip.
   const [
     { count: enrolledCourses },
     { count: upcomingDeadlines },
     { count: completedAssignments },
+    { data: gradedSubs },
   ] = await Promise.all([
     client
       .from('enrollments')
@@ -136,15 +141,13 @@ export async function getStudentStats(
       .eq('student_id', studentId)
       .eq('status', 'submitted')
       .is('deleted_at', null),
+    client
+      .from('submissions')
+      .select(`grade:grades(points), assignment:assignments(max_points)`)
+      .eq('student_id', studentId)
+      .eq('status', 'graded')
+      .is('deleted_at', null),
   ]);
-
-  // Average grade
-  const { data: gradedSubs } = await client
-    .from('submissions')
-    .select(`grade:grades(points), assignment:assignments(max_points)`)
-    .eq('student_id', studentId)
-    .eq('status', 'graded')
-    .is('deleted_at', null);
 
   let averageGrade: number | null = null;
   if (gradedSubs && gradedSubs.length > 0) {

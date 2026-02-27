@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Bell, LogOut, Settings, User, Search } from 'lucide-react';
+import { Bell, LogOut, User, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
   DropdownMenu,
@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ROLE_LABELS, ROLE_COLORS, cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ROLE_LABELS } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface HeaderProps {
@@ -32,30 +32,55 @@ export function Header({ title }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-background/95 px-6 backdrop-blur-md">
       {/* Page title */}
       <div>
-        {title && <h1 className="text-lg font-semibold text-foreground">{title}</h1>}
+        {title && (
+          <h1 className="text-[14px] font-semibold tracking-tight text-foreground">{title}</h1>
+        )}
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Notifications (placeholder – extend with realtime) */}
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
+      <div className="flex items-center gap-1.5">
+        {/* Search */}
+        <div className="relative hidden sm:block">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground/40" />
+          <input
+            type="text"
+            placeholder="Search..."
+            className="h-8 w-48 rounded-lg border border-border/70 bg-muted/40 pl-8 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground/50 transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-ring/40 focus:w-56 hover:border-border"
+          />
+        </div>
+
+        {/* Theme toggle */}
+        <ThemeToggle className="hidden sm:flex" />
+
+        {/* Notifications */}
+        <Button
+          variant="ghost"
+          size="icon"
+            className="h-8 w-8 rounded-lg text-foreground/50 hover:text-foreground"
+          aria-label="Notifications"
+        >
+          <Bell className="h-4 w-4" />
         </Button>
 
         {/* Profile dropdown */}
         {profile && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 px-2">
-                <Avatar className="h-8 w-8">
+              <Button
+                variant="ghost"
+                className="flex h-8 items-center gap-2 rounded-lg px-1.5 hover:bg-muted/60"
+              >
+                <Avatar className="h-7 w-7 ring-1 ring-border/60">
                   <AvatarImage src={profile.avatar_url ?? ''} alt={profile.full_name} />
-                  <AvatarFallback>{profile.full_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-muted text-[10px] font-semibold text-muted-foreground">
+                    {profile.full_name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="hidden text-left md:block">
-                  <p className="text-sm font-medium leading-none">{profile.full_name}</p>
-                  <p className={cn('mt-0.5 w-fit rounded-full px-1.5 py-0.5 text-[10px] font-semibold', ROLE_COLORS[profile.role])}>
+                  <p className="text-[12.5px] font-medium leading-none text-foreground">{profile.full_name}</p>
+                  <p className="mt-0.5 text-[10.5px] leading-none text-muted-foreground">
                     {ROLE_LABELS[profile.role]}
                   </p>
                 </div>
@@ -64,9 +89,9 @@ export function Header({ title }: HeaderProps) {
 
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{profile.full_name}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{profile.email}</p>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{profile.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

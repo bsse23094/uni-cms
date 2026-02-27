@@ -12,6 +12,8 @@ type Client = SupabaseClient<any>;
 export interface AnnouncementFilters {
   course_id?: string | null;
   audience?: string;
+  /** Pass the current user's role to auto-scope visible announcements. */
+  userRole?: 'student' | 'faculty' | 'admin' | 'super_admin';
   is_pinned?: boolean;
   page?: number;
   pageSize?: number;
@@ -21,7 +23,7 @@ export async function getAnnouncements(
   client: Client,
   filters: AnnouncementFilters = {},
 ): Promise<PaginatedResponse<AnnouncementWithAuthor>> {
-  const { course_id, audience, is_pinned, page = 1, pageSize = 20 } = filters;
+  const { course_id, audience, userRole, is_pinned, page = 1, pageSize = 20 } = filters;
 
   const safePageSize = Math.min(Math.max(1, pageSize), 100);
   const safePage = Math.max(1, page);
@@ -41,6 +43,15 @@ export async function getAnnouncements(
     query = course_id ? query.eq('course_id', course_id) : query.is('course_id', null);
   }
   if (audience) query = query.eq('audience', audience as Announcement['audience']);
+
+  // Scope by role: students see 'all'+'students', faculty see 'all'+'faculty',
+  // admin/super_admin see everything (no extra filter needed).
+  if (userRole === 'student') {
+    query = query.in('audience', ['all', 'students']);
+  } else if (userRole === 'faculty') {
+    query = query.in('audience', ['all', 'faculty']);
+  }
+
   if (is_pinned !== undefined) query = query.eq('is_pinned', is_pinned);
 
   const from = (safePage - 1) * safePageSize;

@@ -57,19 +57,16 @@ export async function enrollStudent(
   courseId: string,
   studentId: string,
 ): Promise<Enrollment> {
-  // Check if the course has available capacity
-  const { count: enrolledCount } = await client
-    .from('enrollments')
-    .select('id', { count: 'exact', head: true })
-    .eq('course_id', courseId)
-    .in('status', ['pending', 'approved'])
-    .is('deleted_at', null);
-
-  const { data: course } = await client
-    .from('courses')
-    .select('max_enrollment')
-    .eq('id', courseId)
-    .single();
+  // Check capacity: run both queries in parallel instead of sequentially.
+  const [{ count: enrolledCount }, { data: course }] = await Promise.all([
+    client
+      .from('enrollments')
+      .select('id', { count: 'exact', head: true })
+      .eq('course_id', courseId)
+      .in('status', ['pending', 'approved'])
+      .is('deleted_at', null),
+    client.from('courses').select('max_enrollment').eq('id', courseId).single(),
+  ]);
 
   if (course && (enrolledCount ?? 0) >= course.max_enrollment) {
     throw new Error('This course has reached its maximum enrollment capacity.');

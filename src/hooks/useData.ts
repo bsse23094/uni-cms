@@ -199,6 +199,9 @@ export function useAssignments(filters: assignmentsApi.AssignmentFilters = {}) {
   return useQuery({
     queryKey: ['assignments', filters],
     queryFn: () => assignmentsApi.getAssignments(sb(), filters),
+    // Assignments are actionable — students need to see them quickly after faculty publish.
+    // Use a shorter staleTime (60 s) so the list refreshes more aggressively.
+    staleTime: 60 * 1000,
   });
 }
 

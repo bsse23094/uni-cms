@@ -9,6 +9,7 @@ export interface AssignmentFilters {
   course_id?: string;
   is_published?: boolean;
   student_id?: string;
+  faculty_id?: string;
   page?: number;
   pageSize?: number;
 }
@@ -18,7 +19,7 @@ export async function getAssignments(
   client: Client,
   filters: AssignmentFilters = {},
 ): Promise<PaginatedResponse<AssignmentWithCourse>> {
-  const { course_id, is_published, page = 1, pageSize = 20 } = filters;
+  const { course_id, is_published, student_id, faculty_id, page = 1, pageSize = 20 } = filters;
 
   const safePageSize = Math.min(Math.max(1, pageSize), 100);
   const safePage = Math.max(1, page);
@@ -31,6 +32,34 @@ export async function getAssignments(
 
   if (course_id) query = query.eq('course_id', course_id);
   if (is_published !== undefined) query = query.eq('is_published', is_published);
+
+  // Filter to only assignments in courses the faculty teaches
+  if (faculty_id) {
+    const { data: facData } = await client
+      .from('course_faculty')
+      .select('course_id')
+      .eq('faculty_id', faculty_id);
+    const ids = (facData ?? []).map((r) => r.course_id);
+    if (ids.length === 0) {
+      return { data: [], count: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+    }
+    query = query.in('course_id', ids);
+  }
+
+  // Filter to only published assignments in courses the student is enrolled in
+  if (student_id) {
+    const { data: enrolData } = await client
+      .from('enrollments')
+      .select('course_id')
+      .eq('student_id', student_id)
+      .eq('status', 'approved')
+      .is('deleted_at', null);
+    const ids = (enrolData ?? []).map((e) => e.course_id);
+    if (ids.length === 0) {
+      return { data: [], count: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+    }
+    query = query.in('course_id', ids).eq('is_published', true);
+  }
 
   const from = (safePage - 1) * safePageSize;
   query = query.range(from, from + safePageSize - 1);
@@ -97,15 +126,20 @@ export async function uploadAssignmentFiles(
   assignmentId: string,
   files: File[],
 ): Promise<string[]> {
-  const paths: string[] = [];
-
-  for (const file of files) {
-    const path = `${assignmentId}/${Date.now()}-${file.name}`;
-    const { error } = await client.storage.from('assignments').upload(path, file);
-    if (error) throw new Error(error.message);
-    paths.push(path);
-  }
-  return paths;
+  // Upload all files in parallel instead of sequentially.
+  const results = await Promise.all(
+    files.map((file) => {
+      const path = `${assignmentId}/${Date.now()}-${file.name}`;
+      return client.storage
+        .from('assignments')
+        .upload(path, file)
+        .then(({ error }) => {
+          if (error) throw new Error(error.message);
+          return path;
+        });
+    }),
+  );
+  return results;
 }
 
 /** Update an assignment */

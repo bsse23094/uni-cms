@@ -37,6 +37,7 @@ export default function GradesPage() {
   const filters = {
     status: statusFilter === 'all' ? undefined : statusFilter,
     student_id: isStudent ? profile?.id : undefined,
+    course_id: courseFilter !== 'all' ? courseFilter : undefined,
     page,
     pageSize: 20,
   };

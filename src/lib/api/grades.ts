@@ -8,6 +8,7 @@ type Client = SupabaseClient<any>;
 export interface SubmissionFilters {
   assignment_id?: string;
   student_id?: string;
+  course_id?: string;
   status?: string;
   page?: number;
   pageSize?: number;
@@ -18,7 +19,7 @@ export async function getSubmissions(
   client: Client,
   filters: SubmissionFilters = {},
 ): Promise<PaginatedResponse<SubmissionWithDetails>> {
-  const { assignment_id, student_id, status, page = 1, pageSize = 25 } = filters;
+  const { assignment_id, student_id, course_id, status, page = 1, pageSize = 25 } = filters;
 
   const safePageSize = Math.min(Math.max(1, pageSize), 100);
   const safePage = Math.max(1, page);
@@ -27,7 +28,7 @@ export async function getSubmissions(
     .from('submissions')
     .select(
       `*,
-       assignment:assignments(id,title,due_date,max_points),
+       assignment:assignments(id,title,due_date,max_points,course_id),
        student:profiles!submissions_student_id_fkey(id,full_name,email,student_id,avatar_url),
        grade:grades(id,points,feedback,graded_at,graded_by)`,
       { count: 'exact' },
@@ -38,6 +39,20 @@ export async function getSubmissions(
   if (assignment_id) query = query.eq('assignment_id', assignment_id);
   if (student_id) query = query.eq('student_id', student_id);
   if (status) query = query.eq('status', status as Submission['status']);
+
+  // Filter by course via the assignment's course_id (subquery approach)
+  if (course_id) {
+    const { data: assignData } = await client
+      .from('assignments')
+      .select('id')
+      .eq('course_id', course_id)
+      .is('deleted_at', null);
+    const aIds = (assignData ?? []).map((a) => a.id);
+    if (aIds.length === 0) {
+      return { data: [], count: 0, page: safePage, pageSize: safePageSize, totalPages: 0 };
+    }
+    query = query.in('assignment_id', aIds);
+  }
 
   const from = (safePage - 1) * safePageSize;
   query = query.range(from, from + safePageSize - 1);

@@ -8,6 +8,7 @@ import {
   useEnrollments,
   useAssignments,
   useCreateAssignment,
+  useUpdateAssignment,
 } from '@/hooks/useData';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -116,6 +117,23 @@ function CreateAssignmentDialog({
                 )}
               />
             </div>
+            <div className="space-y-1">
+              <Label>Visibility</Label>
+              <Controller
+                control={control}
+                name="is_published"
+                defaultValue={true}
+                render={({ field }) => (
+                  <Select value={field.value ? 'true' : 'false'} onValueChange={(v) => field.onChange(v === 'true')}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Published (visible to students)</SelectItem>
+                      <SelectItem value="false">Draft (hidden from students)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -133,10 +151,18 @@ export default function CourseDetailPage() {
   const { profile } = useAuth();
   const { data: course, isLoading } = useCourse(id);
   const { data: enrollments } = useEnrollments({ course_id: id, pageSize: 50 });
-  const { data: assignments } = useAssignments({ course_id: id, pageSize: 50 });
+  const isStudent = profile?.role === 'student';
+  // Students see only published assignments; faculty/admin see all (including drafts)
+  const { data: assignments } = useAssignments({
+    course_id: id,
+    is_published: isStudent ? true : undefined,
+    pageSize: 50,
+  });
   const [showCreateAssignment, setShowCreateAssignment] = useState(false);
 
   const canManage = profile?.role === 'super_admin' || profile?.role === 'admin' || profile?.role === 'faculty';
+  const updateAssignment = useUpdateAssignment();
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -162,6 +188,10 @@ export default function CourseDetailPage() {
   }
 
   const activeEnrollments = enrollments?.data.filter((e) => e.status === 'approved') ?? [];
+  // For students: RLS only returns their own enrollment row, so find it from the result
+  const myEnrollment = isStudent
+    ? enrollments?.data.find((e) => e.student_id === profile?.id) ?? null
+    : null;
 
   return (
     <div className="space-y-6">
@@ -180,8 +210,19 @@ export default function CourseDetailPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-3xl font-bold">{activeEnrollments.length}</p>
-            <p className="text-sm text-muted-foreground mt-1">Enrolled Students</p>
+            {isStudent ? (
+              <>
+                <Badge className={myEnrollment ? ENROLLMENT_STATUS_COLORS[myEnrollment.status] : 'bg-gray-100 text-gray-700'}>
+                  {myEnrollment?.status ?? 'Not enrolled'}
+                </Badge>
+                <p className="text-sm text-muted-foreground mt-2">Your Status</p>
+              </>
+            ) : (
+              <>
+                <p className="text-3xl font-bold">{activeEnrollments.length}</p>
+                <p className="text-sm text-muted-foreground mt-1">Enrolled Students</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -226,14 +267,17 @@ export default function CourseDetailPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="students">
+      <Tabs defaultValue={isStudent ? 'assignments' : 'students'}>
         <TabsList>
-          <TabsTrigger value="students"><Users className="mr-2 h-4 w-4" />Students ({activeEnrollments.length})</TabsTrigger>
+          {!isStudent && (
+            <TabsTrigger value="students"><Users className="mr-2 h-4 w-4" />Students ({activeEnrollments.length})</TabsTrigger>
+          )}
           <TabsTrigger value="assignments"><FileText className="mr-2 h-4 w-4" />Assignments ({assignments?.count ?? 0})</TabsTrigger>
           {course.description && <TabsTrigger value="about">About</TabsTrigger>}
         </TabsList>
 
-        {/* Students Tab */}
+        {/* Students Tab — faculty/admin only (RLS prevents students from seeing others) */}
+        {!isStudent && (
         <TabsContent value="students">
           <Card>
             <CardContent className="pt-4">
@@ -266,6 +310,7 @@ export default function CourseDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         {/* Assignments Tab */}
         <TabsContent value="assignments">
@@ -286,17 +331,41 @@ export default function CourseDetailPage() {
                   {assignments?.data.map((a) => (
                     <li key={a.id} className="flex items-center justify-between py-3">
                       <div>
-                        <p className="text-sm font-medium">{a.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{a.title}</p>
+                          {!a.is_published && (
+                            <Badge variant="secondary" className="text-xs">Draft</Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground capitalize">{a.max_points} pts</p>
                       </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {formatDateTime(a.due_date)}
+                      <div className="flex items-center gap-2">
+                        {canManage && !a.is_published && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 px-2 text-green-700 border-green-300 hover:bg-green-50"
+                            loading={publishingId === a.id}
+                            onClick={() => {
+                              setPublishingId(a.id);
+                              updateAssignment.mutate(
+                                { id: a.id, updates: { is_published: true } },
+                                { onSettled: () => setPublishingId(null) },
+                              );
+                            }}
+                          >
+                            Publish
+                          </Button>
+                        )}
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {formatDateTime(a.due_date)}
+                          </div>
+                          <Button asChild variant="ghost" size="sm" className="mt-1">
+                            <Link href={`/dashboard/courses/${id}/assignments/${a.id}`}>View</Link>
+                          </Button>
                         </div>
-                        <Button asChild variant="ghost" size="sm" className="mt-1">
-                          <Link href={`/dashboard/courses/${id}/assignments/${a.id}`}>View</Link>
-                        </Button>
                       </div>
                     </li>
                   ))}

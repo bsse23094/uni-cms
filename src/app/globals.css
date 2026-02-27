@@ -2,35 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════
+   LIGHT MODE  (default)
+═══════════════════════════════════════════════════════════ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    /* Background & surface */
+    --background:         240  9% 97%;   /* #f6f6f8 cool white    */
+    --card:                 0  0% 100%;  /* pure white cards      */
+    --card-foreground:    240 10%  8%;
+    --popover:              0  0% 100%;
+    --popover-foreground: 240 10%  8%;
 
-    /* Sidebar */
-    --sidebar: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-border: 210 40% 15%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    /* Text */
+    --foreground:         240 10%  8%;   /* #111114 near-black    */
+
+    /* Primary */
+    --primary:            240 10%  8%;
+    --primary-foreground:   0  0% 100%;
+
+    /* Secondary / Muted */
+    --secondary:          240  6% 93%;
+    --secondary-foreground: 240  5% 22%;
+    --muted:              240  6% 93%;
+    --muted-foreground:   240  6% 28%;
+
+    /* Accent */
+    --accent:             240  6% 91%;
+    --accent-foreground:  240 10%  8%;
+
+    /* Semantic */
+    --destructive:          0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders & inputs */
+    --border:             240  6% 88%;
+    --input:              240  6% 88%;
+    --ring:               240 10% 25%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Sidebar – always dark charcoal in both modes */
+    --sidebar:                  240 14%  8%;
+    --sidebar-foreground:         0  0% 93%;
+    --sidebar-border:           240 12% 13%;
+    --sidebar-accent:           240 12% 14%;
+    --sidebar-accent-foreground:  0  0% 100%;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════════════════════════ */
+@layer base {
+  .dark {
+    /* Background & surface */
+    --background:         222 22%  4%;   /* #0b0c10 near-black    */
+    --card:               222 22%  7%;   /* #0f1117 dark surface  */
+    --card-foreground:      0  0% 93%;
+    --popover:            222 22%  8%;
+    --popover-foreground:   0  0% 93%;
+
+    /* Text */
+    --foreground:           0  0% 92%;   /* warm off-white        */
+
+    /* Primary */
+    --primary:              0  0% 100%;
+    --primary-foreground: 222 22%  6%;
+
+    /* Secondary / Muted */
+    --secondary:          222 20% 11%;
+    --secondary-foreground: 0  0% 72%;
+    --muted:              222 20% 10%;
+    --muted-foreground:   220  8% 50%;
+
+    /* Accent */
+    --accent:             222 20% 13%;
+    --accent-foreground:    0  0% 90%;
+
+    /* Semantic */
+    --destructive:          0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders & inputs */
+    --border:             222 18% 14%;
+    --input:              222 18% 14%;
+    --ring:                 0  0% 85%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Sidebar – slightly deeper than body */
+    --sidebar:                  222 20%  5%;
+    --sidebar-foreground:         0  0% 93%;
+    --sidebar-border:           222 18% 10%;
+    --sidebar-accent:           222 18% 11%;
+    --sidebar-accent-foreground:  0  0% 100%;
   }
 }
 
@@ -39,22 +107,58 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'ss01' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }
 
-/* Smooth scrollbar */
+/* ── Scrollbar ────────────────────────────────────────────── */
 :root {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--border)) transparent;
 }
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.dark {
+  scrollbar-color: rgba(255,255,255,0.09) transparent;
 }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  {
   background: hsl(var(--border));
-  border-radius: 3px;
+  border-radius: 99px;
+}
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.35); }
+
+/* ── Card hover glow ──────────────────────────────────────── */
+.card-hover {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  border-color: hsl(var(--border));
+  box-shadow: 0 4px 24px -4px hsl(var(--foreground) / 0.06);
+}
+.dark .card-hover:hover {
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 8px 32px -8px rgba(0,0,0,0.6);
+}
+
+/* ── Sidebar nav pill hover animation ────────────────────── */
+.nav-pill {
+  position: relative;
+  overflow: hidden;
+}
+.nav-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: transparent;
+  transition: background 0.18s ease;
 }

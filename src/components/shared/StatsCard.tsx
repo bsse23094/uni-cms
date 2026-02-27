@@ -19,26 +19,26 @@ export function StatsCard({
   description,
   trend,
   className,
-  iconColor = 'text-primary',
+  iconColor = 'text-foreground',
 }: StatsCardProps) {
   return (
-    <Card className={cn('', className)}>
-      <CardContent className="p-6">
+    <Card className={cn('group', className)}>
+      <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight">{value}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{title}</p>
+            <p className="text-2xl font-bold tracking-tight">{value}</p>
             {description && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
             {trend && (
-              <p className={cn('text-xs font-medium', trend.positive ? 'text-green-600' : 'text-red-500')}>
+              <p className={cn('text-xs font-medium', trend.positive ? 'text-emerald-600' : 'text-red-500')}>
                 {trend.positive ? '+' : '-'}{Math.abs(trend.value)}% from last month
               </p>
             )}
           </div>
-          <div className={cn('rounded-full bg-primary/10 p-3', iconColor.replace('text-', 'bg-').concat('/10'))}>
-            <Icon className={cn('h-6 w-6', iconColor)} />
+          <div className="rounded-lg border border-border/60 bg-muted/50 p-2.5 transition-all duration-200 group-hover:bg-muted group-hover:border-border">
+            <Icon className={cn('h-5 w-5', iconColor)} />
           </div>
         </div>
       </CardContent>

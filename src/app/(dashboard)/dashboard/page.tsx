@@ -46,22 +46,22 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-muted-foreground mb-1">Overview</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-1">Overview</h2>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard title="Total Users" value={stats?.totalUsers ?? 0} icon={Users} iconColor="text-blue-500" />
-        <StatsCard title="Total Courses" value={stats?.totalCourses ?? 0} icon={BookOpen} iconColor="text-purple-500" />
-        <StatsCard title="Enrollments" value={stats?.totalEnrollments ?? 0} icon={ClipboardList} iconColor="text-green-500" />
+        <StatsCard title="Total Users" value={stats?.totalUsers ?? 0} icon={Users} iconColor="text-muted-foreground" />
+        <StatsCard title="Total Courses" value={stats?.totalCourses ?? 0} icon={BookOpen} iconColor="text-muted-foreground" />
+        <StatsCard title="Enrollments" value={stats?.totalEnrollments ?? 0} icon={ClipboardList} iconColor="text-muted-foreground" />
         <StatsCard
           title="Pending Enrollments"
           value={stats?.pendingEnrollments ?? 0}
           icon={AlertCircle}
-          iconColor="text-yellow-500"
+          iconColor="text-amber-500 dark:text-amber-400"
           description="Awaiting approval"
         />
-        <StatsCard title="Faculty" value={stats?.totalFaculty ?? 0} icon={Users} iconColor="text-indigo-500" />
-        <StatsCard title="Students" value={stats?.totalStudents ?? 0} icon={Users} iconColor="text-pink-500" />
-        <StatsCard title="Active Courses" value={stats?.activeCourses ?? 0} icon={TrendingUp} iconColor="text-emerald-500" />
+        <StatsCard title="Faculty" value={stats?.totalFaculty ?? 0} icon={Users} iconColor="text-muted-foreground" />
+        <StatsCard title="Students" value={stats?.totalStudents ?? 0} icon={Users} iconColor="text-muted-foreground" />
+        <StatsCard title="Active Courses" value={stats?.activeCourses ?? 0} icon={TrendingUp} iconColor="text-emerald-600 dark:text-emerald-400" />
       </div>
 
       {/* Quick actions */}
@@ -123,10 +123,10 @@ function FacultyDashboard({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard title="Courses Taught" value={data?.coursesTaught ?? 0} icon={BookOpen} iconColor="text-blue-500" />
-        <StatsCard title="Total Students" value={data?.totalStudents ?? 0} icon={Users} iconColor="text-green-500" />
-        <StatsCard title="Pending Submissions" value={data?.pendingSubmissions ?? 0} icon={FileText} iconColor="text-yellow-500" description="Awaiting grading" />
-        <StatsCard title="Upcoming Deadlines" value={data?.upcomingAssignments ?? 0} icon={Calendar} iconColor="text-purple-500" />
+        <StatsCard title="Courses Taught" value={data?.coursesTaught ?? 0} icon={BookOpen} iconColor="text-muted-foreground" />
+        <StatsCard title="Total Students" value={data?.totalStudents ?? 0} icon={Users} iconColor="text-muted-foreground" />
+        <StatsCard title="Pending Submissions" value={data?.pendingSubmissions ?? 0} icon={FileText} iconColor="text-amber-500 dark:text-amber-400" description="Awaiting grading" />
+        <StatsCard title="Upcoming Deadlines" value={data?.upcomingAssignments ?? 0} icon={Calendar} iconColor="text-muted-foreground" />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -166,14 +166,14 @@ function StudentDashboard({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard title="Enrolled Courses" value={data?.enrolledCourses ?? 0} icon={BookOpen} iconColor="text-blue-500" />
-        <StatsCard title="Upcoming Deadlines" value={data?.upcomingDeadlines ?? 0} icon={Calendar} iconColor="text-red-500" description="Due within 7 days" />
-        <StatsCard title="Submitted Assignments" value={data?.completedAssignments ?? 0} icon={FileText} iconColor="text-green-500" />
+        <StatsCard title="Enrolled Courses" value={data?.enrolledCourses ?? 0} icon={BookOpen} iconColor="text-muted-foreground" />
+        <StatsCard title="Upcoming Deadlines" value={data?.upcomingDeadlines ?? 0} icon={Calendar} iconColor="text-red-500 dark:text-red-400" description="Due within 7 days" />
+        <StatsCard title="Submitted Assignments" value={data?.completedAssignments ?? 0} icon={FileText} iconColor="text-emerald-600 dark:text-emerald-400" />
         <StatsCard
           title="Average Grade"
           value={data?.averageGrade !== null ? `${data?.averageGrade}%` : 'N/A'}
           icon={Star}
-          iconColor="text-yellow-500"
+          iconColor="text-amber-500 dark:text-amber-400"
         />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
@@ -221,10 +221,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">
-          {greeting()}, {profile.full_name.split(' ')[0]} 👋
+        <h1 className="text-3xl font-bold tracking-tight">
+          {greeting()}, {profile.full_name.split(' ')[0]}
         </h1>
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           {ROLE_LABELS[profile.role]} &mdash; {formatDate(new Date())}
         </p>
       </div>

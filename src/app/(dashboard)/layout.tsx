@@ -1,19 +1,16 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+// Middleware (src/middleware.ts) already verifies authentication for all /dashboard/* routes
+// and redirects unauthenticated visitors to /login before the layout ever runs.
+// Repeating auth.getUser() here adds a redundant round-trip to Supabase auth on every
+// page navigation — removed for performance.
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect('/login');
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
@@ -23,7 +20,7 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto max-w-7xl p-6">
+          <div className="mx-auto max-w-7xl px-6 py-5">
             <ErrorBoundary>
               {children}
             </ErrorBoundary>

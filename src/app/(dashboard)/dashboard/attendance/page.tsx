@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useCourses, useEnrollments } from '@/hooks/useData';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -17,13 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, CheckCircle, XCircle, Save } from 'lucide-react';
+import { Calendar, Save } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 type AttendanceEntry = {
   studentId: string;
   status: 'present' | 'absent' | 'late' | 'excused';
+};
+
+type AttendanceRecord = {
+  id: string;
+  session_date: string;
+  is_present: boolean;
 };
 
 export default function AttendancePage() {
@@ -41,10 +49,28 @@ export default function AttendancePage() {
     pageSize: 100,
   });
 
+  // Faculty/admin: load enrolled students for the selected course
   const { data: enrollments, isLoading: loadingStudents } = useEnrollments({
-    course_id: selectedCourseId || undefined,
+    course_id: (!isStudent && selectedCourseId) ? selectedCourseId : undefined,
     status: 'approved',
     pageSize: 100,
+  });
+
+  // Student: load own attendance records for the selected course
+  const { data: ownAttendance, isLoading: loadingOwnAttendance } = useQuery({
+    queryKey: ['attendance', 'student', profile?.id, selectedCourseId],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('id, session_date, is_present')
+        .eq('student_id', profile!.id)
+        .eq('course_id', selectedCourseId)
+        .order('session_date', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as AttendanceRecord[];
+    },
+    enabled: isStudent && !!profile?.id && !!selectedCourseId,
   });
 
   const students = enrollments?.data.map((e) => e.student).filter(Boolean) ?? [];
@@ -77,14 +103,7 @@ export default function AttendancePage() {
     }
   };
 
-  const statusConfig = {
-    present: { label: 'Present', icon: CheckCircle, color: 'text-green-600' },
-    absent: { label: 'Absent', icon: XCircle, color: 'text-red-600' },
-    late: { label: 'Late', icon: Calendar, color: 'text-yellow-600' },
-    excused: { label: 'Excused', icon: CheckCircle, color: 'text-blue-600' },
-  };
-
-  const statuses = Object.keys(statusConfig) as AttendanceEntry['status'][];
+  const statuses = ['present', 'absent', 'late', 'excused'] as const;
 
   return (
     <div className="space-y-6">
@@ -124,85 +143,105 @@ export default function AttendancePage() {
           <Calendar className="mx-auto h-12 w-12 opacity-30 mb-4" />
           <p>Select a course to view attendance.</p>
         </div>
-      ) : loadingStudents ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
-        </div>
-      ) : students.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p>No enrolled students in this course.</p>
-        </div>
-      ) : (
-        <>
+      ) : isStudent ? (
+        // ── Student view: show own attendance records ──
+        loadingOwnAttendance ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14" />)}
+          </div>
+        ) : (ownAttendance ?? []).length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Calendar className="mx-auto h-12 w-12 opacity-30 mb-4" />
+            <p>No attendance records found for this course yet.</p>
+          </div>
+        ) : (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">
-                {isStudent ? 'Your Attendance' : `Attendance — ${selectedDate}`}
-              </CardTitle>
-              {!isStudent && (
+            <CardHeader>
+              <CardTitle className="text-base">Your Attendance History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y">
+                {(ownAttendance ?? []).map((record) => (
+                  <li key={record.id} className="flex items-center justify-between py-3">
+                    <span className="text-sm">{formatDate(record.session_date)}</span>
+                    <Badge variant={record.is_present ? 'success' : 'destructive'}>
+                      {record.is_present ? 'Present' : 'Absent'}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground mt-4">
+                {(ownAttendance ?? []).filter((r) => r.is_present).length} present ·{' '}
+                {(ownAttendance ?? []).filter((r) => !r.is_present).length} absent out of{' '}
+                {(ownAttendance ?? []).length} sessions
+              </p>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        // ── Faculty/admin view: mark attendance for students ──
+        loadingStudents ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
+          </div>
+        ) : students.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <p>No enrolled students in this course.</p>
+          </div>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base">Attendance — {selectedDate}</CardTitle>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>{Object.values(attendance).filter((v) => v === 'present').length} present</span>
                   <span>{Object.values(attendance).filter((v) => v === 'absent').length} absent</span>
                 </div>
-              )}
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y">
-                {students.map((student) => {
-                  if (!student) return null;
-                  const currentStatus = attendance[student.id] ?? 'present';
-                  return (
-                    <li key={student.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={student.avatar_url ?? undefined} />
-                          <AvatarFallback>{student.full_name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">{student.full_name}</p>
-                          <p className="text-xs text-muted-foreground">{student.email}</p>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y">
+                  {students.map((student) => {
+                    if (!student) return null;
+                    const currentStatus = attendance[student.id] ?? 'present';
+                    return (
+                      <li key={student.id} className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={student.avatar_url ?? undefined} />
+                            <AvatarFallback>{student.full_name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">{student.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{student.email}</p>
+                          </div>
                         </div>
-                      </div>
-
-                      {isStudent ? (
-                        <Badge
-                          variant={currentStatus === 'present' || currentStatus === 'excused' ? 'success' : 'destructive'}
-                        >
-                          {statusConfig[currentStatus].label}
-                        </Badge>
-                      ) : (
                         <div className="flex items-center gap-1">
-                          {statuses.map((s) => {
-                            const Icon = statusConfig[s].icon;
-                            return (
-                              <Button
-                                key={s}
-                                variant={currentStatus === s ? 'default' : 'outline'}
-                                size="sm"
-                                className="h-8 px-2 text-xs"
-                                onClick={() => toggleStatus(student.id, s)}
-                              >
-                                {statusConfig[s].label}
-                              </Button>
-                            );
-                          })}
+                          {statuses.map((s) => (
+                            <Button
+                              key={s}
+                              variant={currentStatus === s ? 'default' : 'outline'}
+                              size="sm"
+                              className="h-8 px-2 text-xs capitalize"
+                              onClick={() => toggleStatus(student.id, s)}
+                            >
+                              {s}
+                            </Button>
+                          ))}
                         </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
 
-          {!isStudent && (
             <div className="flex justify-end">
               <Button onClick={handleSave} loading={saving}>
                 <Save className="mr-2 h-4 w-4" />Save Attendance
               </Button>
             </div>
-          )}
-        </>
+          </>
+        )
       )}
     </div>
   );
