@@ -18,7 +18,7 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
             refetchOnMount: false,
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,
-            placeholderData: (previousData) => previousData,
+            placeholderData: (previousData: unknown) => previousData,
           },
           mutations: {
             retry: 0,
