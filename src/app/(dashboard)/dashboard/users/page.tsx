@@ -101,18 +101,18 @@ function CreateUserDialog({
           <DialogTitle>Create New User</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Full Name</Label>
               <Input {...register('full_name')} placeholder="Dr. Jane Smith" />
               {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Email</Label>
               <Input type="email" {...register('email')} placeholder="user@university.edu" />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Password</Label>
               <Input type="password" {...register('password')} placeholder="Minimum 8 characters" />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
@@ -196,8 +196,8 @@ function EditUserDialog({
           <DialogTitle>Edit User</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Full Name</Label>
               <Input {...register('full_name')} />
               {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
@@ -234,7 +234,7 @@ function EditUserDialog({
               <Label>Phone</Label>
               <Input {...register('phone')} placeholder="+1 234 567 890" />
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Bio</Label>
               <Textarea {...register('bio')} rows={3} />
             </div>
@@ -372,8 +372,8 @@ export default function UsersPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="relative flex-1 min-w-0 sm:min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name or email…"
@@ -383,7 +383,7 @@ export default function UsersPage() {
           />
         </div>
         <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v as UserRole | 'all'); setPage(1); }}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder="All Roles" />
           </SelectTrigger>
@@ -395,7 +395,7 @@ export default function UsersPage() {
           </SelectContent>
         </Select>
         <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v as typeof activeFilter); setPage(1); }}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-full sm:w-36">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

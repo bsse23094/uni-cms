@@ -3,14 +3,15 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { GraduationCap, Mail, Lock, BookOpen, Users, ClipboardCheck, TrendingUp } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { GraduationCap, Mail, Lock, BookOpen, Users, ClipboardCheck, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { loginSchema, type LoginSchema } from '@/lib/validations';
 import { signInAction } from './actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 
 const STATS = [
   { icon: Users,          label: 'Active Students',  value: '2,400+' },
@@ -20,7 +21,27 @@ const STATS = [
 ];
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const verified = searchParams.get('verified') === 'true';
+  const authError = searchParams.get('error');
+
+  useEffect(() => {
+    if (verified) {
+      toast.success('Email verified! You can now sign in.');
+    }
+    if (authError === 'auth_callback_error') {
+      toast.error('Verification failed. The link may have expired — please try registering again.');
+    }
+  }, [verified, authError]);
 
   const {
     register,
@@ -123,7 +144,7 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right panel ──────────────────────────────────── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-[#f4f4f6] px-6 py-12">
+      <div className="flex flex-1 flex-col items-center justify-center bg-[#f4f4f6] px-4 py-8 sm:px-6 sm:py-12">
 
         {/* Mobile logo – visible only on small screens */}
         <div className="mb-8 flex flex-col items-center gap-2 lg:hidden">
@@ -141,6 +162,17 @@ export default function LoginPage() {
               Sign in to your university account to continue.
             </p>
           </div>
+
+          {/* Verified banner */}
+          {verified && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <div>
+                <p className="text-[13px] font-medium text-emerald-900">Email verified successfully</p>
+                <p className="mt-0.5 text-[12px] text-emerald-700">Your account is confirmed. Sign in to get started.</p>
+              </div>
+            </div>
+          )}
 
           {/* Form card */}
           <div className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm">

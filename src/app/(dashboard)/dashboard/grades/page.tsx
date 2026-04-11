@@ -140,9 +140,9 @@ export default function GradesPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <Select value={courseFilter} onValueChange={(v) => { setCourseFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-52"><SelectValue placeholder="All Courses" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="All Courses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Courses</SelectItem>
             {courses?.data.map((c) => (
@@ -151,7 +151,7 @@ export default function GradesPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="submitted">Submitted</SelectItem>

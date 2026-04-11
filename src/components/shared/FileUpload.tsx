@@ -73,7 +73,7 @@ export function FileUpload({
       {/* Drop zone */}
       <label
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-5 sm:p-8 text-center transition-colors',
           dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/60',
           disabled && 'pointer-events-none opacity-50',
         )}

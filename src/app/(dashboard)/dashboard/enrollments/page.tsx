@@ -205,7 +205,7 @@ export default function EnrollmentsPage() {
         }
       />
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         {!isStudent && (
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -218,7 +218,7 @@ export default function EnrollmentsPage() {
           </div>
         )}
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as EnrollmentStatus | 'all'); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>

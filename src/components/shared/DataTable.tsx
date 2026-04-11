@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Inbox } from 'lucide-react';
 
 export interface Column<T> {
@@ -53,16 +54,16 @@ export function DataTable<T extends { id: string }>({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto -mx-4 sm:mx-0">
+        <Table className="min-w-[600px] sm:min-w-0">
           <TableHeader>
             <TableRow>
               {columns.map((col) => (
-                <TableHead key={col.key} className={col.className}>
+                <TableHead key={col.key} className={cn('whitespace-nowrap px-3 py-2 text-xs sm:px-4 sm:py-3 sm:text-sm', col.className)}>
                   {col.label}
                 </TableHead>
               ))}
-              {rowActions && <TableHead className="w-[80px]">Actions</TableHead>}
+              {rowActions && <TableHead className="w-[80px] px-3 py-2 text-xs sm:px-4 sm:py-3 sm:text-sm">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -82,14 +83,14 @@ export function DataTable<T extends { id: string }>({
               data.map((row) => (
                 <TableRow key={row.id}>
                   {columns.map((col) => (
-                    <TableCell key={col.key} className={col.className}>
+                    <TableCell key={col.key} className={cn('px-3 py-2 text-xs sm:px-4 sm:py-3 sm:text-sm', col.className)}>
                       {col.render
                         ? col.render(row)
                         : String((row as Record<string, unknown>)[col.key] ?? '')}
                     </TableCell>
                   ))}
                   {rowActions && (
-                    <TableCell>{rowActions(row)}</TableCell>
+                    <TableCell className="px-3 py-2 sm:px-4 sm:py-3">{rowActions(row)}</TableCell>
                   )}
                 </TableRow>
               ))
@@ -100,8 +101,8 @@ export function DataTable<T extends { id: string }>({
 
       {/* Pagination */}
       {totalPages > 1 && onPageChange && (
-        <div className="flex items-center justify-end gap-2">
-          <span className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 sm:justify-end">
+          <span className="text-xs sm:text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </span>
           <div className="flex gap-1">

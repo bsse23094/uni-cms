@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Bell, LogOut, User, Search } from 'lucide-react';
+import { Bell, LogOut, User, Search, Menu } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useSidebar } from '@/context/SidebarContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ interface HeaderProps {
 
 export function Header({ title }: HeaderProps) {
   const { profile, signOut } = useAuth();
+  const { toggleMobile } = useSidebar();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -32,9 +34,20 @@ export function Header({ title }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-background/95 px-6 backdrop-blur-md">
-      {/* Page title */}
-      <div>
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-background/95 px-3 sm:px-6 backdrop-blur-md">
+      {/* Left side: hamburger + title */}
+      <div className="flex items-center gap-2">
+        {/* Mobile hamburger */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0 lg:hidden text-foreground/60 hover:text-foreground"
+          onClick={toggleMobile}
+          aria-label="Open navigation menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
         {title && (
           <h1 className="text-[14px] font-semibold tracking-tight text-foreground">{title}</h1>
         )}
@@ -52,13 +65,13 @@ export function Header({ title }: HeaderProps) {
         </div>
 
         {/* Theme toggle */}
-        <ThemeToggle className="hidden sm:flex" />
+        <ThemeToggle />
 
         {/* Notifications */}
         <Button
           variant="ghost"
           size="icon"
-            className="h-8 w-8 rounded-lg text-foreground/50 hover:text-foreground"
+          className="h-8 w-8 rounded-lg text-foreground/50 hover:text-foreground"
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />

@@ -223,7 +223,6 @@ export function useCreateAssignment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['assignments'] });
-      toast.success('Assignment created');
     },
     onError: (e: Error) => toast.error(e.message),
   });

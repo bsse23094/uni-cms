@@ -65,7 +65,7 @@ function CreateAnnouncementDialog({ open, onClose }: { open: boolean; onClose: (
             <Textarea {...register('content')} rows={5} placeholder="Announcement content…" />
             {errors.content && <p className="text-xs text-destructive">{errors.content.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Audience</Label>
               <Controller

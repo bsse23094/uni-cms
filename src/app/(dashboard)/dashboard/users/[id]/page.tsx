@@ -144,8 +144,8 @@ export default function UserDetailPage() {
           <CardHeader><CardTitle>Edit Profile</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2 space-y-1">
                   <Label>Full Name</Label>
                   <Input {...register('full_name')} />
                   {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
@@ -180,7 +180,7 @@ export default function UserDetailPage() {
                   <Label>Phone</Label>
                   <Input {...register('phone')} />
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <Label>Bio</Label>
                   <Textarea {...register('bio')} rows={4} />
                 </div>

@@ -23,11 +23,11 @@ export function StatsCard({
 }: StatsCardProps) {
   return (
     <Card className={cn('group', className)}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{title}</p>
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
+      <CardContent className="p-3.5 sm:p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1 min-w-0">
+            <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-muted-foreground/70 truncate">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold tracking-tight">{value}</p>
             {description && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
@@ -37,8 +37,8 @@ export function StatsCard({
               </p>
             )}
           </div>
-          <div className="rounded-lg border border-border/60 bg-muted/50 p-2.5 transition-all duration-200 group-hover:bg-muted group-hover:border-border">
-            <Icon className={cn('h-5 w-5', iconColor)} />
+          <div className="rounded-lg border border-border/60 bg-muted/50 p-1.5 sm:p-2.5 transition-all duration-200 group-hover:bg-muted group-hover:border-border shrink-0">
+            <Icon className={cn('h-4 w-4 sm:h-5 sm:w-5', iconColor)} />
           </div>
         </div>
       </CardContent>

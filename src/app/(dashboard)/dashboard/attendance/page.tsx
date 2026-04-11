@@ -113,9 +113,9 @@ export default function AttendancePage() {
         icon={<Calendar className="h-6 w-6" />}
       />
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-          <SelectTrigger className="w-64">
+          <SelectTrigger className="w-full sm:w-64">
             <SelectValue placeholder="Select a course…" />
           </SelectTrigger>
           <SelectContent>
@@ -133,7 +133,7 @@ export default function AttendancePage() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-44"
+            className="w-full sm:w-44"
           />
         )}
       </div>
@@ -204,24 +204,24 @@ export default function AttendancePage() {
                     if (!student) return null;
                     const currentStatus = attendance[student.id] ?? 'present';
                     return (
-                      <li key={student.id} className="flex items-center justify-between py-3">
+                      <li key={student.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={student.avatar_url ?? undefined} />
                             <AvatarFallback>{student.full_name.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{student.full_name}</p>
-                            <p className="text-xs text-muted-foreground">{student.email}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{student.full_name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{student.email}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="grid grid-cols-4 gap-1 sm:flex sm:items-center">
                           {statuses.map((s) => (
                             <Button
                               key={s}
                               variant={currentStatus === s ? 'default' : 'outline'}
                               size="sm"
-                              className="h-8 px-2 text-xs capitalize"
+                              className="h-8 px-1.5 text-[11px] sm:px-2 sm:text-xs capitalize"
                               onClick={() => toggleStatus(student.id, s)}
                             >
                               {s}

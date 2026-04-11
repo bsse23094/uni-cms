@@ -148,13 +148,13 @@ export default function ProfilePage() {
           <CardHeader><CardTitle>Edit Profile</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2 space-y-1">
                   <Label>Full Name *</Label>
                   <Input {...register('full_name')} />
                   {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <Label>Email</Label>
                   <Input value={profile.email} disabled className="bg-muted" />
                   <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
@@ -167,7 +167,7 @@ export default function ProfilePage() {
                   <Label>Department</Label>
                   <Input {...register('department')} placeholder="e.g. Computer Science" />
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <Label>Bio</Label>
                   <Textarea {...register('bio')} rows={5} placeholder="Tell us a bit about yourself…" />
                   {errors.bio && <p className="text-xs text-destructive">{errors.bio.message}</p>}

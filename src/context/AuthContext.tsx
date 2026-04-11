@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
@@ -19,6 +21,9 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+
   // Stable client reference — createClient() must only be called once per mount.
   // Calling it on every render creates competing instances that break cookie sync.
   const supabaseRef = useRef<SupabaseClient | null>(null);
@@ -30,47 +35,120 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastPathRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(
-    async (userId: string) => {
+    async (userId: string): Promise<Profile | null> => {
       const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .is('deleted_at', null)
-        .single();
-      setProfile(data ?? null);
+        .maybeSingle();
+
+      const nextProfile = data ?? null;
+      if (!nextProfile || !nextProfile.is_active || nextProfile.deleted_at) {
+        setProfile(null);
+        return null;
+      }
+
+      setProfile(nextProfile);
+      return nextProfile;
     },
     [supabase],
   );
 
-  useEffect(() => {
-    const init = async () => {
+  const syncSessionFromCookies = useCallback(async () => {
+    try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      setUser(session?.user ?? null);
-      if (session?.user) await fetchProfile(session.user.id);
-      setLoading(false);
-    };
+      let nextUser = session?.user ?? null;
 
-    init();
+      // Fallback for cases where session cache lags behind server-set auth cookies.
+      if (!nextUser) {
+        const {
+          data: { user: fallbackUser },
+        } = await supabase.auth.getUser();
+        nextUser = fallbackUser ?? null;
+      }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      setUser(nextUser);
+
+      if (nextUser) {
+        const nextProfile = await fetchProfile(nextUser.id);
+        if (!nextProfile) {
+          await supabase.auth.signOut();
+          queryClient.clear();
+          setUser(null);
+          setProfile(null);
+        }
       } else {
         setProfile(null);
       }
+    } catch {
+      setUser(null);
+      setProfile(null);
+    } finally {
       setLoading(false);
+    }
+  }, [supabase, fetchProfile, queryClient]);
+
+  useEffect(() => {
+    syncSessionFromCookies();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        if (event === 'SIGNED_OUT') {
+          // Drop cached protected data after sign-out.
+          queryClient.clear();
+          setUser(null);
+          setProfile(null);
+          return;
+        }
+
+        // Refresh role/data-driven views after sign-in, token refresh, etc.
+        await queryClient.invalidateQueries();
+
+        const nextUser = session?.user ?? null;
+        setUser(nextUser);
+
+        if (nextUser) {
+          const nextProfile = await fetchProfile(nextUser.id);
+          if (!nextProfile) {
+            await supabase.auth.signOut();
+            queryClient.clear();
+            setUser(null);
+            setProfile(null);
+          }
+        } else {
+          setProfile(null);
+        }
+      } catch {
+        setUser(null);
+        setProfile(null);
+      } finally {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase, fetchProfile]);
+  }, [supabase, fetchProfile, syncSessionFromCookies, queryClient]);
+
+  useEffect(() => {
+    // Server Action sign-in updates cookies on the server response, but this
+    // provider remains mounted across route changes. Re-check session when
+    // pathname changes so post-login dashboard renders immediately.
+    if (lastPathRef.current === null) {
+      lastPathRef.current = pathname;
+      return;
+    }
+    if (lastPathRef.current === pathname) return;
+    lastPathRef.current = pathname;
+    syncSessionFromCookies();
+  }, [pathname, syncSessionFromCookies]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -78,16 +156,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
+    // Use the configured app URL so the verification email works in production.
+    // Fallback to window.location.origin for local development.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: `${appUrl}/auth/callback`,
+      },
     });
     if (error) throw new Error(error.message);
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    queryClient.clear();
     setUser(null);
     setProfile(null);
   };

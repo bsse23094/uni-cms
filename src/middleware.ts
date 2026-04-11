@@ -64,9 +64,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Most dashboard routes only need auth. Skip extra profile lookup for those paths
+  // so sidebar navigation feels instant.
+  const needsRoleCheck =
+    pathname.startsWith('/dashboard/users') ||
+    pathname.startsWith('/dashboard/announcements/new');
+
+  if (!needsRoleCheck) {
+    return supabaseResponse;
+  }
+
   // Fetch role from profiles using service role to bypass RLS in middleware context.
-  // The anon key + authenticated RLS sometimes fails to resolve auth.uid() in the
-  // Edge Runtime, returning null and incorrectly triggering the deactivation redirect.
   const adminClient = createSupabaseAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

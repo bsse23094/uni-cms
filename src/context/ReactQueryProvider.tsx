@@ -10,14 +10,15 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Keep data fresh for 5 minutes — avoids refetching on every quick navigation.
-            // Most CMS data (courses, users, enrollments) doesn't change every minute.
-            staleTime: 5 * 60 * 1000,      // 5 minutes
+            // Keep recently visited page data warm to avoid loading flashes
+            // while navigating across dashboard routes.
+            staleTime: 30 * 1000,
             gcTime: 10 * 60 * 1000,        // 10 minutes
             retry: 1,
-            // Re-enable so students pick up new assignments/announcements when they
-            // switch back to the CMS tab after a faculty member has added content.
-            refetchOnWindowFocus: true,
+            refetchOnMount: false,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: true,
+            placeholderData: (previousData) => previousData,
           },
           mutations: {
             retry: 0,

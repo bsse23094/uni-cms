@@ -76,7 +76,7 @@ function CreateCourseDialog({ open, onClose }: { open: boolean; onClose: () => v
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Create New Course</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Course Code *</Label>
               <Input {...register('course_code')} placeholder="CS101" />
@@ -87,12 +87,12 @@ function CreateCourseDialog({ open, onClose }: { open: boolean; onClose: () => v
               <Input {...register('credits', { valueAsNumber: true })} type="number" min={1} max={12} />
               {errors.credits && <p className="text-xs text-destructive">{errors.credits.message}</p>}
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Course Title *</Label>
               <Input {...register('title')} placeholder="Introduction to Computer Science" />
               {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Description</Label>
               <Textarea {...register('description')} rows={3} />
             </div>
@@ -179,8 +179,8 @@ export default function CoursesPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="relative flex-1 min-w-0 sm:min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search courses…"

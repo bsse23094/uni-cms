@@ -42,6 +42,9 @@ import {
   Plus,
   Calendar,
 } from 'lucide-react';
+import { FileUpload } from '@/components/shared/FileUpload';
+import { createClient } from '@/lib/supabase/client';
+import { uploadAssignmentFiles } from '@/lib/api/assignments';
 import { formatDate, formatDateTime, ENROLLMENT_STATUS_COLORS } from '@/lib/utils';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,6 +63,8 @@ function CreateAssignmentDialog({
   onClose: () => void;
 }) {
   const createAssignment = useCreateAssignment();
+  const updateAssignmentMut = useUpdateAssignment();
+  const [attachFiles, setAttachFiles] = useState<File[]>([]);
   const {
     register,
     handleSubmit,
@@ -69,8 +74,25 @@ function CreateAssignmentDialog({
   } = useForm<AssignmentFormData>({ resolver: zodResolver(assignmentFormSchema) });
 
   const onSubmit = async (data: AssignmentFormData) => {
-    await createAssignment.mutateAsync({ ...data, course_id: courseId });
+    const assignment = await createAssignment.mutateAsync({ ...data, course_id: courseId });
+
+    // Upload attachment files if any
+    if (attachFiles.length > 0 && assignment?.id) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const supabase = createClient() as any;
+        const paths = await uploadAssignmentFiles(supabase, assignment.id, attachFiles);
+        await updateAssignmentMut.mutateAsync({
+          id: assignment.id,
+          updates: { attachment_urls: paths },
+        });
+      } catch {
+        toast.error('Assignment created but file upload failed. You can add files later.');
+      }
+    }
+
     toast.success('Assignment created');
+    setAttachFiles([]);
     reset();
     onClose();
   };
@@ -80,13 +102,13 @@ function CreateAssignmentDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>New Assignment</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Title *</Label>
               <Input {...register('title')} />
               {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>Instructions</Label>
               <Textarea {...register('instructions')} rows={3} />
             </div>
@@ -134,6 +156,15 @@ function CreateAssignmentDialog({
                 )}
               />
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Attachments (optional)</Label>
+            <FileUpload
+              onFilesSelected={setAttachFiles}
+              multiple
+              maxSizeMB={20}
+              accept=".pdf,.doc,.docx,.txt,.zip,.png,.jpg"
+            />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -207,7 +238,7 @@ export default function CourseDetailPage() {
       />
 
       {/* Stats Row */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6 text-center">
             {isStudent ? (
@@ -268,7 +299,7 @@ export default function CourseDetailPage() {
       )}
 
       <Tabs defaultValue={isStudent ? 'assignments' : 'students'}>
-        <TabsList>
+        <TabsList className="w-full sm:w-auto overflow-x-auto">
           {!isStudent && (
             <TabsTrigger value="students"><Users className="mr-2 h-4 w-4" />Students ({activeEnrollments.length})</TabsTrigger>
           )}
